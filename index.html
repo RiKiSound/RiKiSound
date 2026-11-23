@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nonstop</title>
+    <link rel="stylesheet" href="background.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cascadia+Mono:ital,wght@0,200..700;1,200..700&family=Freehand&family=Montserrat:ital,wght@0,100..900;1,100..900&family=Noto+Serif+Khmer:wght@100..900&display=swap" rel="stylesheet">
+</head>
+<body>
+    <h1>Wellcome to my Web of DJAY</h1>
+    <p> We not profactional dj, we just only listen the remix music</p>
+    <h2>IS ME LY_RIKI</h2>
+    <p>Need to click to listening music</p>
+    <div class="account-controls">
+        <span id="account-status" role="status" aria-live="polite">Checking account...</span>
+        <button id="logout-button" class="download-btn" type="button" hidden>Sign out</button>
+    </div>
+    <section class="music-library" aria-labelledby="music-heading">
+        <h2 id="music-heading">Music library</h2>
+        <p>Play a song or download the one you like. Uploads are only available in your browser.</p>
+        <input id="music-upload" class="file-input" type="file" accept="audio/*" multiple>
+        <label class="download-btn upload-btn" for="music-upload">Upload music</label>
+        <p id="upload-status" role="status" aria-live="polite"></p>
+        <div id="song-list" class="song-list"></div>
+    </section>
+    <script>
+        const musicUpload = document.querySelector("#music-upload");
+        const songList = document.querySelector("#song-list");
+        const uploadStatus = document.querySelector("#upload-status");
+        const accountStatus = document.querySelector("#account-status");
+        const logoutButton = document.querySelector("#logout-button");
+        const audioExtensions = /\.(mp3|wav|ogg|m4a|aac|flac|opus)$/i;
+        let csrfToken = "";
+        let isAdmin = false;
+
+        function createSongCard({ title: songTitle, audioUrl, downloadUrl, songId = null, objectUrl = null }) {
+            const song = document.createElement("article");
+            song.className = "song-card";
+            if (songId) {
+                song.dataset.songId = songId;
+            }
+            if (objectUrl) {
+                song.dataset.objectUrl = objectUrl;
+            }
+
+            const title = document.createElement("span");
+            title.textContent = songTitle;
+
+            const player = document.createElement("audio");
+            player.controls = true;
+            player.preload = "none";
+            player.src = audioUrl;
+
+            const actions = document.createElement("div");
+            actions.className = "song-actions";
+
+            const download = document.createElement("a");
+            download.className = "download-btn";
+            download.href = downloadUrl;
+            download.download = "";
+            download.textContent = "Download";
+            actions.append(download);
+
+            const deleteButton = document.createElement("button");
+            deleteButton.className = "delete-btn";
+            deleteButton.type = "button";
+            deleteButton.textContent = "Delete";
+            deleteButton.setAttribute("aria-label", `Delete ${songTitle}`);
+            deleteButton.hidden = Boolean(songId && !isAdmin);
+            actions.append(deleteButton);
+
+            song.append(title, player, actions);
+            songList.append(song);
+        }
+
+        async function checkResponse(response) {
+            if (!response.ok) {
+                const result = await response.json();
+                throw new Error(result.error || `Request failed (${response.status}).`);
+            }
+            return response;
+        }
+
+        async function loadLibrary() {
+            const accountResponse = await checkResponse(await fetch("/api/me"));
+            const account = await accountResponse.json();
+            if (!account.authenticated) {
+                window.location.assign("/");
+                return;
+            }
+
+            isAdmin = account.is_admin;
+            csrfToken = account.csrf_token;
+            accountStatus.textContent = isAdmin
+                ? `Administrator: ${account.email}`
+                : `Signed in as ${account.email}`;
+            logoutButton.hidden = false;
+
+            const songsResponse = await checkResponse(await fetch("/api/songs"));
+            const songs = await songsResponse.json();
+            songs.forEach(song => createSongCard({
+                title: song.title,
+                audioUrl: song.audio_url,
+                downloadUrl: song.download_url,
+                songId: song.id,
+            }));
+        }
+
+        musicUpload.addEventListener("change", () => {
+            const files = Array.from(musicUpload.files);
+            const audioFiles = files.filter(file =>
+                file.type.startsWith("audio/") || audioExtensions.test(file.name)
+            );
+
+            audioFiles.forEach(file => {
+                const objectUrl = URL.createObjectURL(file);
+                createSongCard({
+                    title: file.name,
+                    audioUrl: objectUrl,
+                    downloadUrl: objectUrl,
+                    objectUrl,
+                });
+            });
+
+            const rejectedCount = files.length - audioFiles.length;
+            uploadStatus.textContent = audioFiles.length
+                ? `${audioFiles.length} song${audioFiles.length === 1 ? "" : "s"} added for this visit.${rejectedCount ? ` ${rejectedCount} unsupported file${rejectedCount === 1 ? "" : "s"} skipped.` : ""}`
+                : "Choose an audio file to add it to the list.";
+            musicUpload.value = "";
+        });
+
+        logoutButton.addEventListener("click", async () => {
+            try {
+                await checkResponse(await fetch("/auth/logout", {
+                    method: "POST",
+                    headers: { "X-CSRF-Token": csrfToken },
+                }));
+                window.location.assign("/");
+            } catch (error) {
+                accountStatus.textContent = `Could not sign out: ${error.message}`;
+            }
+        });
+
+        songList.addEventListener("click", async event => {
+            if (!(event.target instanceof Element)) {
+                return;
+            }
+            const deleteButton = event.target.closest(".delete-btn");
+            if (!deleteButton) {
+                return;
+            }
+
+            const song = deleteButton.closest(".song-card");
+            if (!song) {
+                return;
+            }
+
+            if (song.dataset.songId) {
+                if (!isAdmin || !csrfToken) {
+                    uploadStatus.textContent = "Only the administrator can delete website songs.";
+                    return;
+                }
+                if (!window.confirm("Permanently delete this song from the website?")) {
+                    return;
+                }
+
+                try {
+                    await checkResponse(await fetch(`/api/songs/${encodeURIComponent(song.dataset.songId)}`, {
+                        method: "DELETE",
+                        headers: { "X-CSRF-Token": csrfToken },
+                    }));
+                } catch (error) {
+                    uploadStatus.textContent = `Could not delete the song: ${error.message}`;
+                    return;
+                }
+            } else if (song.dataset.objectUrl) {
+                URL.revokeObjectURL(song.dataset.objectUrl);
+            }
+
+            song.remove();
+            uploadStatus.textContent = song.dataset.songId
+                ? "Song permanently deleted from the website."
+                : "Song removed from your local list.";
+        });
+
+        loadLibrary().catch(error => {
+            accountStatus.textContent = `Could not load your account: ${error.message}`;
+            uploadStatus.textContent = "The music library could not be loaded.";
+        });
+    </script>
+</body>
+</html>

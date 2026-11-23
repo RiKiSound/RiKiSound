@@ -1,0 +1,154 @@
+body {
+    min-height: 100vh;
+    margin: 0;
+    padding: 32px 16px;
+    box-sizing: border-box;
+    background: linear-gradient(135deg, #00b894 0%, #00856f 35%, #005f73 70%, #001f3f 100%);
+    background-attachment: fixed;
+    color: #ffffff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    text-align: center;
+    font-family: "Cascadia Mono", sans-serif;
+}
+
+.music-library {
+    width: min(100%, 760px);
+}
+
+.login-panel {
+    max-width: 640px;
+    margin: auto;
+}
+
+.login-panel [hidden] {
+    display: none;
+}
+
+.account-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: 12px 0 24px;
+}
+
+.account-controls [hidden] {
+    display: none;
+}
+
+.song-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-top: 20px;
+}
+
+.song-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.45);
+    border-radius: 10px;
+    background: rgba(0, 31, 63, 0.4);
+    text-align: left;
+}
+
+.song-card span {
+    overflow-wrap: anywhere;
+}
+
+.song-card audio {
+    width: 100%;
+    grid-column: 1 / -1;
+}
+
+.song-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.upload-btn {
+    cursor: pointer;
+}
+
+.download-btn,
+.login-btn {
+    display: inline-block;
+    justify-self: start;
+    padding: 12px 20px;
+    border: 2px solid #ffffff;
+    border-radius: 8px;
+    background: rgba(0, 31, 63, 0.55);
+    color: #ffffff;
+    font-weight: bold;
+    text-decoration: none;
+}
+
+.login-btn {
+    font: inherit;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.download-btn:hover,
+.login-btn:hover {
+    background: #ffffff;
+    color: #001f3f;
+}
+
+.delete-btn {
+    padding: 12px 20px;
+    border: 2px solid #ffc4c4;
+    border-radius: 8px;
+    background: rgba(115, 20, 35, 0.75);
+    color: #ffffff;
+    font: inherit;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.delete-btn:hover {
+    background: #ffffff;
+    color: #731423;
+}
+
+.file-input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+.file-input:focus-visible + .upload-btn {
+    outline: 2px solid #ffffff;
+    outline-offset: 3px;
+}
+
+@media (max-width: 520px) {
+    .song-card {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .song-card audio {
+        grid-column: auto;
+    }
+
+    .song-actions {
+        justify-self: stretch;
+    }
+
+    .song-actions .download-btn,
+    .song-actions .delete-btn {
+        flex: 1;
+        text-align: center;
+    }
+}

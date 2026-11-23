@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign in - Nonstop</title>
+    <link rel="stylesheet" href="background.css">
+</head>
+<body>
+    <main class="login-panel">
+        <h1>Welcome to my Web of DJAY</h1>
+        <p>Sign in with Google to view, play, and download music.</p>
+        <form action="/auth/login" method="get">
+            <button id="google-login" class="login-btn" type="submit">Log in with Google</button>
+        </form>
+        <p id="login-status" role="status" aria-live="polite"></p>
+    </main>
+    <script>
+        fetch("/api/me")
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error("The sign-in service is unavailable.");
+                }
+                return response.json();
+            })
+            .then(account => {
+                if (!account.login_enabled) {
+                    document.querySelector("#google-login").hidden = true;
+                    document.querySelector("#login-status").textContent =
+                        "Google sign-in has not been configured by the site owner yet.";
+                }
+            })
+            .catch(error => {
+                document.querySelector("#login-status").textContent = error.message;
+            });
+    </script>
+</body>
+</html>
